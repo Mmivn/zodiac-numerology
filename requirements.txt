@@ -1,0 +1,18 @@
+# Multi-provider AI gateway (Gemini -> Groq -> Mistral -> Cloudflare Workers AI
+# -> OpenAI last-resort), installed from its own GitHub repo instead of
+# duplicating provider code here. See ai_service.py and
+# https://github.com/Mmivn/ALL_API for the source.
+#
+# Pinned to a specific commit for reproducible builds (incl. on Streamlit
+# Community Cloud, which cannot use a local editable/filesystem path). To
+# pick up a newer ALL_API version, bump this SHA to the desired commit on
+# that repo's main branch — no other change needed here.
+git+https://github.com/Mmivn/ALL_API.git@6dbf58033763acbf04869b72023102a71e69f87a#egg=all-api
+
+python-dotenv>=1.0
+streamlit>=1.61.1
+
+# Dev/test only — Streamlit Community Cloud doesn't need it to run the app,
+# but keeping it here (as this standalone repo's single requirements file)
+# means `pip install -r requirements.txt` is enough for local dev too.
+pytest>=8.0
