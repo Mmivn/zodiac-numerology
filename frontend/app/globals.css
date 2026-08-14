@@ -1,0 +1,110 @@
+@import "tailwindcss";
+
+/* Cosmic / mystical-luxury dark theme — same palette as the Streamlit
+   app's .streamlit/config.toml, carried over 1:1 so the visual identity
+   survives the migration. */
+:root {
+  --background: #0a0918;
+  --surface: #161329;
+  --surface-2: #1d1a3a;
+  --foreground: #edebf7;
+  --muted: #8b87a8;
+  --border: #2e2a52;
+
+  --violet: #8b7cf6;
+  --violet-soft: #a89bf9;
+  --blue: #22d3ee;
+  --gold: #f2c14e;
+  --green: #34d399;
+  --red: #f87171;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-foreground: var(--foreground);
+  --color-muted: var(--muted);
+  --color-border: var(--border);
+  --color-violet: var(--violet);
+  --color-violet-soft: var(--violet-soft);
+  --color-blue: var(--blue);
+  --color-gold: var(--gold);
+  --color-green: var(--green);
+  --color-red: var(--red);
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  background: var(--background);
+  color: var(--foreground);
+}
+
+body {
+  font-family: var(--font-sans);
+  background-image:
+    radial-gradient(circle at 15% 0%, rgba(139, 124, 246, 0.16), transparent 45%),
+    radial-gradient(circle at 85% 10%, rgba(34, 211, 238, 0.10), transparent 40%);
+  background-attachment: fixed;
+  min-height: 100dvh;
+}
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 1.25rem;
+}
+
+.card-glow {
+  box-shadow: 0 0 0 1px var(--violet), 0 8px 30px -8px rgba(139, 124, 246, 0.45);
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, var(--violet), var(--violet-soft));
+  color: #0a0918;
+  border-radius: 999px;
+  font-weight: 600;
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+.btn-primary:hover:not(:disabled) {
+  opacity: 0.92;
+}
+
+.btn-primary:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.btn-secondary {
+  background: var(--surface-2);
+  color: var(--foreground);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+}
+
+.btn-secondary:hover:not(:disabled) {
+  border-color: var(--violet);
+}
+
+.input-field {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 0.85rem;
+  color: var(--foreground);
+}
+
+.input-field:focus {
+  outline: none;
+  border-color: var(--violet);
+  box-shadow: 0 0 0 3px rgba(139, 124, 246, 0.25);
+}
+
+.gold-accent {
+  color: var(--gold);
+}

@@ -63,16 +63,19 @@ def reset_client():
     _gateway = None
 
 
-def ask_ai(instructions, user_input, previous_response_id=None):
-    """Send one request through the AI gateway (Gemini -> Groq -> Mistral ->
-    Cloudflare -> OpenAI last resort).
+def gateway_status():
+    """Safe-to-expose snapshot of gateway state — provider names and
+    routing config only, never a key value. See AIGateway.status(). Used
+    by the backend's GET /health endpoint."""
+    return _get_gateway().status()
 
-    Returns (text, response_id). Raises MissingAPIKeyError,
-    EmptyResponseError, or AIServiceError (covers provider errors, an
-    exhausted fallback chain, and network failures) on failure — never
-    lets a raw provider/network exception or an API key leak to the
-    caller. `previous_response_id` is accepted for signature
-    compatibility but not forwarded — see module docstring.
+
+def ask_ai_detailed(instructions, user_input):
+    """Like ask_ai, but returns ALL_API's full GenerateResult (.text,
+    .provider, .model, .fallback_count, .cached, .used_paid_provider)
+    instead of just the text — for callers that need to report which
+    provider actually answered (e.g. the backend API's JSON responses).
+    Raises the same exceptions as ask_ai.
     """
     gateway = _get_gateway()
     _logger.debug("[AI-CALL-LOG] MAIN GENERATION input_len=%d", len(user_input))
@@ -86,8 +89,7 @@ def ask_ai(instructions, user_input, previous_response_id=None):
     except Exception as error:  # network/timeout/etc. — anything else the gateway can raise
         raise AIServiceError(str(error)) from error
 
-    text = result.text
-    if not text or not text.strip():
+    if not result.text or not result.text.strip():
         raise EmptyResponseError("The AI returned an empty response")
 
     _logger.info(
@@ -95,7 +97,22 @@ def ask_ai(instructions, user_input, previous_response_id=None):
         "fallback_count=%d cached=%s used_paid_provider=%s",
         result.provider, result.model, result.fallback_count, result.cached, result.used_paid_provider,
     )
-    return text, None
+    return result
+
+
+def ask_ai(instructions, user_input, previous_response_id=None):
+    """Send one request through the AI gateway (Gemini -> Groq -> Mistral ->
+    Cloudflare -> OpenAI last resort).
+
+    Returns (text, response_id). Raises MissingAPIKeyError,
+    EmptyResponseError, or AIServiceError (covers provider errors, an
+    exhausted fallback chain, and network failures) on failure — never
+    lets a raw provider/network exception or an API key leak to the
+    caller. `previous_response_id` is accepted for signature
+    compatibility but not forwarded — see module docstring.
+    """
+    result = ask_ai_detailed(instructions, user_input)
+    return result.text, None
 
 
 def translate_text(text, language):
