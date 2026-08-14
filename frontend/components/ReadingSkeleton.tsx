@@ -8,7 +8,7 @@
  */
 export default function ReadingSkeleton() {
   return (
-    <div className="card p-6 sm:p-8 space-y-5" aria-hidden="true">
+    <div className="card card-feature reveal p-6 sm:p-8 space-y-5" aria-hidden="true">
       <div className="space-y-2">
         <div className="skeleton h-2.5 w-20 rounded-full" />
         <div className="skeleton h-5 w-2/3 rounded-md" />

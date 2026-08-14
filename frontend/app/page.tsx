@@ -101,7 +101,10 @@ export default function Home() {
   return (
     <div className="flex-1 flex flex-col">
       <header className="max-w-4xl w-full mx-auto px-4 sm:px-6 pt-8 sm:pt-10 pb-4 flex items-center justify-between gap-4">
-        <div>
+        {/* Keyed on language so a language switch replays the reveal
+            animation on the title block — a visible confirmation the
+            change took effect, without an effect calling setState. */}
+        <div key={language} className="reveal">
           <span className="eyebrow">Astrology · Numerology · AI</span>
           <h1 className="font-display text-2xl sm:text-3xl text-foreground mt-1.5">
             {copy.appTitle}
@@ -128,17 +131,18 @@ export default function Home() {
           <>
             <Hero profile={profile} language={language} onEdit={handleEditProfile} />
 
-            <div className="flex gap-1.5 p-1 rounded-xl bg-surface-2/60 border border-border w-fit">
+            <div className="flex gap-1.5 p-1 rounded-xl bg-surface-2/60 backdrop-blur-sm border border-border w-fit">
               {(["zodiac", "numerology"] as Tab[]).map((key) => (
                 <button
                   key={key}
                   type="button"
                   onClick={() => setTab(key)}
+                  aria-pressed={tab === key}
                   className={
-                    "px-4 sm:px-5 py-2 text-sm font-medium rounded-lg transition-all " +
+                    "px-4 sm:px-5 py-2 text-sm font-medium rounded-lg transition-all duration-200 ease-out " +
                     (tab === key
-                      ? "bg-violet/25 text-foreground shadow-[0_0_0_1px_rgba(111,98,214,0.4)]"
-                      : "text-muted hover:text-foreground-dim")
+                      ? "bg-violet/25 text-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_0_0_1px_rgba(111,98,214,0.45),0_6px_16px_-6px_rgba(111,98,214,0.35)] -translate-y-px"
+                      : "text-muted hover:text-foreground-dim hover:bg-white/5")
                   }
                 >
                   {key === "zodiac" ? copy.tabZodiac : copy.tabNumerology}

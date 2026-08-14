@@ -25,7 +25,7 @@ export default function ConsentGate({
   const copy = t(language);
 
   return (
-    <div className="card p-5 space-y-3 border-gold-soft/30">
+    <div className="card reveal p-5 space-y-3 border-gold-soft/30">
       <div className="flex items-start gap-2.5">
         <svg
           className="h-4 w-4 mt-0.5 shrink-0 text-gold-soft"

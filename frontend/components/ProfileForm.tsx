@@ -60,7 +60,10 @@ export default function ProfileForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="card card-glow p-7 sm:p-9 space-y-6 w-full max-w-md">
+    <form
+      onSubmit={handleSubmit}
+      className="card card-feature card-glow reveal float-slow p-7 sm:p-9 space-y-6 w-full max-w-md"
+    >
       <div>
         <span className="eyebrow">{copy.appTitle.replace(/^[^\p{L}]*/u, "")}</span>
         <h2 className="font-display text-2xl sm:text-[1.75rem] text-foreground mt-2 leading-tight">
@@ -108,7 +111,14 @@ export default function ProfileForm({
 
       {error && <p className="text-sm text-red">{error}</p>}
 
-      <button type="submit" disabled={saving} className="btn-primary w-full py-3.5 text-sm">
+      <button
+        type="submit"
+        disabled={saving}
+        className={"btn-primary w-full py-3.5 text-sm inline-flex items-center justify-center gap-2" + (saving ? " is-loading" : "")}
+      >
+        {saving && (
+          <span className="h-3.5 w-3.5 rounded-full border-2 border-white/30 border-t-white animate-spin" />
+        )}
         {saving ? copy.loadingReading : copy.saveButton}
       </button>
     </form>

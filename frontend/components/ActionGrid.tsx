@@ -20,7 +20,7 @@ export default function ActionGrid<K extends string>({
             onClick={() => onSelect(item.key)}
             aria-pressed={isActive}
             className={
-              "card card-interactive relative p-4 sm:p-5 text-left overflow-hidden " +
+              "card card-compact card-interactive relative p-4 sm:p-5 text-left overflow-hidden " +
               (isActive ? "card-active" : "")
             }
           >

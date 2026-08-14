@@ -87,7 +87,7 @@ export default function AskAiPanel({
 
   return (
     <div className="space-y-4">
-      <div className="card p-6 sm:p-7 space-y-4">
+      <div className="card card-feature reveal p-6 sm:p-7 space-y-4">
         <div>
           <h3 className="font-display text-lg sm:text-xl text-foreground">{title}</h3>
           <p className="text-sm text-muted mt-1.5 leading-relaxed">{description}</p>
@@ -105,7 +105,7 @@ export default function AskAiPanel({
           type="button"
           onClick={submit}
           disabled={loading || !question.trim()}
-          className="btn-primary px-6 py-3 text-sm inline-flex items-center gap-2"
+          className={"btn-primary px-6 py-3 text-sm inline-flex items-center gap-2" + (loading ? " is-loading" : "")}
         >
           {loading && (
             <span className="h-3.5 w-3.5 rounded-full border-2 border-white/30 border-t-white animate-spin" />
