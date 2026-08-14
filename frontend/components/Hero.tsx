@@ -16,21 +16,35 @@ export default function Hero({
   const signName = SIGN_NAMES[language][profile.zodiac_sign] ?? profile.zodiac_sign_name;
 
   return (
-    <div className="card p-5 sm:p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-      <div className="flex items-center gap-4">
-        <div className="h-14 w-14 rounded-full border-2 border-violet flex items-center justify-center shrink-0 bg-gradient-to-br from-violet/20 to-transparent">
-          <span className="text-xs font-semibold text-violet-soft text-center leading-tight px-1">
-            {signName}
-          </span>
+    <div className="card p-6 sm:p-7 flex flex-col sm:flex-row sm:items-center justify-between gap-5">
+      <div className="flex items-center gap-4 sm:gap-5">
+        <div className="relative h-16 w-16 sm:h-18 sm:w-18 shrink-0">
+          <div className="absolute inset-0 rounded-full bg-gradient-to-br from-violet/25 via-transparent to-gold/15 blur-sm" />
+          <div className="relative h-full w-full rounded-full border border-gold-soft/40 flex items-center justify-center bg-surface-2/60">
+            <span className="font-display text-[0.7rem] sm:text-xs text-gold-soft text-center leading-tight px-1">
+              {signName}
+            </span>
+          </div>
         </div>
         <div>
-          <div className="text-lg font-semibold">{copy.heroGreeting(profile.name)}</div>
-          <div className="text-xs text-muted mt-0.5">
-            {copy.profileZodiacSign}: {signName} · {copy.profileLifePath}: {profile.life_path_number}
+          <div className="eyebrow mb-1">{copy.profileZodiacSign}</div>
+          <div className="font-display text-xl sm:text-2xl text-foreground">
+            {copy.heroGreeting(profile.name)}
+          </div>
+          <div className="text-xs text-muted mt-1.5 flex items-center gap-2 flex-wrap">
+            <span>{signName}</span>
+            <span className="text-border-strong">·</span>
+            <span>
+              {copy.profileLifePath} {profile.life_path_number}
+            </span>
           </div>
         </div>
       </div>
-      <button type="button" onClick={onEdit} className="btn-secondary px-4 py-2 text-xs self-start sm:self-auto">
+      <button
+        type="button"
+        onClick={onEdit}
+        className="btn-secondary px-4 py-2.5 text-xs self-start sm:self-auto shrink-0"
+      >
         {copy.editProfile}
       </button>
     </div>

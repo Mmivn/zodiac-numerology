@@ -25,17 +25,31 @@ export default function ConsentGate({
   const copy = t(language);
 
   return (
-    <div className="rounded-xl border border-gold/40 bg-surface-2 p-4 space-y-2">
-      <p className="text-sm text-gold">{copy.consentRequired}</p>
-      <p className="text-xs text-muted">{copy.consentWhy}</p>
-      <label className="flex items-start gap-2 text-sm cursor-pointer select-none pt-1">
+    <div className="card p-5 space-y-3 border-gold-soft/30">
+      <div className="flex items-start gap-2.5">
+        <svg
+          className="h-4 w-4 mt-0.5 shrink-0 text-gold-soft"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.75"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden="true"
+        >
+          <path d="M12 9v4M12 17h.01M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L14.71 3.86a2 2 0 0 0-3.42 0Z" />
+        </svg>
+        <p className="text-sm text-gold-soft font-medium">{copy.consentRequired}</p>
+      </div>
+      <p className="text-xs text-muted leading-relaxed pl-6">{copy.consentWhy}</p>
+      <label className="flex items-start gap-2.5 text-sm cursor-pointer select-none pl-6 pt-1">
         <input
           type="checkbox"
           checked={checked}
           onChange={(event) => onChange(event.target.checked)}
-          className="mt-0.5 h-4 w-4 accent-violet"
+          className="mt-0.5 h-4 w-4 rounded accent-violet cursor-pointer"
         />
-        <span>{copy.consentLabel}</span>
+        <span className="text-foreground-dim leading-snug">{copy.consentLabel}</span>
       </label>
     </div>
   );

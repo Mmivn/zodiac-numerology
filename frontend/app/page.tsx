@@ -100,15 +100,20 @@ export default function Home() {
 
   return (
     <div className="flex-1 flex flex-col">
-      <header className="max-w-4xl w-full mx-auto px-4 sm:px-6 pt-8 pb-2 flex items-center justify-between gap-4">
+      <header className="max-w-4xl w-full mx-auto px-4 sm:px-6 pt-8 sm:pt-10 pb-4 flex items-center justify-between gap-4">
         <div>
-          <h1 className="text-xl sm:text-2xl font-semibold">{copy.appTitle}</h1>
-          <p className="text-xs text-muted mt-1 hidden sm:block">{copy.appSubtitle}</p>
+          <span className="eyebrow">Astrology · Numerology · AI</span>
+          <h1 className="font-display text-2xl sm:text-3xl text-foreground mt-1.5">
+            {copy.appTitle}
+          </h1>
+          <p className="text-xs text-muted mt-1.5 hidden sm:block max-w-sm leading-relaxed">
+            {copy.appSubtitle}
+          </p>
         </div>
         <LanguageSelector language={language} onChange={handleLanguageChange} />
       </header>
 
-      <main className="flex-1 max-w-4xl w-full mx-auto px-4 sm:px-6 py-6 flex flex-col gap-5">
+      <main className="flex-1 max-w-4xl w-full mx-auto px-4 sm:px-6 py-6 flex flex-col gap-6">
         {!profile || showForm ? (
           <div className="flex-1 flex items-center justify-center py-8">
             <ProfileForm
@@ -123,17 +128,17 @@ export default function Home() {
           <>
             <Hero profile={profile} language={language} onEdit={handleEditProfile} />
 
-            <div className="flex gap-2 border-b border-border pb-0">
+            <div className="flex gap-1.5 p-1 rounded-xl bg-surface-2/60 border border-border w-fit">
               {(["zodiac", "numerology"] as Tab[]).map((key) => (
                 <button
                   key={key}
                   type="button"
                   onClick={() => setTab(key)}
                   className={
-                    "px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors " +
+                    "px-4 sm:px-5 py-2 text-sm font-medium rounded-lg transition-all " +
                     (tab === key
-                      ? "border-violet text-foreground"
-                      : "border-transparent text-muted hover:text-foreground")
+                      ? "bg-violet/25 text-foreground shadow-[0_0_0_1px_rgba(111,98,214,0.4)]"
+                      : "text-muted hover:text-foreground-dim")
                   }
                 >
                   {key === "zodiac" ? copy.tabZodiac : copy.tabNumerology}

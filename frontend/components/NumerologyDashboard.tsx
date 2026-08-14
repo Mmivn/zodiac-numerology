@@ -77,7 +77,7 @@ export default function NumerologyDashboard({
   return (
     <div className="space-y-5">
       {numbers && (
-        <div className="grid grid-cols-4 gap-2 text-center">
+        <div className="grid grid-cols-4 gap-2 sm:gap-3 text-center">
           {(
             [
               [copy.numerologyCards.life_path, numbers.life_path_number],
@@ -86,9 +86,11 @@ export default function NumerologyDashboard({
               [copy.numerologyCards.year, numbers.personal_year_number],
             ] as const
           ).map(([label, value]) => (
-            <div key={label} className="card p-3">
-              <div className="text-xl font-semibold text-violet-soft">{value}</div>
-              <div className="text-[11px] text-muted mt-0.5 leading-tight">{label}</div>
+            <div key={label} className="card p-3 sm:p-4">
+              <div className="font-display text-2xl sm:text-3xl text-gold-soft">{value}</div>
+              <div className="text-[10px] sm:text-[11px] text-muted mt-1 leading-tight uppercase tracking-wide">
+                {label}
+              </div>
             </div>
           ))}
         </div>
@@ -98,6 +100,7 @@ export default function NumerologyDashboard({
 
       {action === "compatibility" ? (
         <CompatibilityPanel
+          key={`numerology-compatibility-${language}`}
           domain="numerology"
           name={profile.name}
           birthDate={profile.birth_date}
@@ -109,6 +112,7 @@ export default function NumerologyDashboard({
         />
       ) : action === "ask_ai" ? (
         <AskAiPanel
+          key={`numerology-ask_ai-${language}`}
           domain="numerology"
           name={profile.name}
           birthDate={profile.birth_date}
@@ -120,6 +124,7 @@ export default function NumerologyDashboard({
         />
       ) : (
         <AIPanel
+          key={`numerology:${action}:${signature}:${language}`}
           domain="numerology"
           kind={action}
           signature={signature}

@@ -50,6 +50,7 @@ export default function ZodiacDashboard({
 
       {action === "compatibility" ? (
         <CompatibilityPanel
+          key={`zodiac-compatibility-${language}`}
           domain="zodiac"
           name={profile.name}
           birthDate={profile.birth_date}
@@ -61,6 +62,7 @@ export default function ZodiacDashboard({
         />
       ) : action === "ask_ai" ? (
         <AskAiPanel
+          key={`zodiac-ask_ai-${language}`}
           domain="zodiac"
           name={profile.name}
           birthDate={profile.birth_date}
@@ -72,6 +74,7 @@ export default function ZodiacDashboard({
         />
       ) : (
         <AIPanel
+          key={`zodiac:${action}:${signature}:${language}`}
           domain="zodiac"
           kind={action}
           signature={signature}

@@ -5,8 +5,9 @@ import type { Language } from "@/lib/types";
 
 export default function Disclaimer({ language }: { language: Language }) {
   return (
-    <p className="text-xs text-muted text-center px-4 py-3 max-w-2xl mx-auto">
-      {t(language).disclaimer}
-    </p>
+    <div className="max-w-2xl mx-auto px-4 py-10 text-center">
+      <div className="divider-elegant max-w-xs mx-auto" />
+      <p className="text-xs text-muted leading-relaxed">{t(language).disclaimer}</p>
+    </div>
   );
 }

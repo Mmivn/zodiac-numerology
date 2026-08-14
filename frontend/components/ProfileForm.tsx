@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 import { ApiError, createProfile } from "@/lib/api";
 import { t } from "@/lib/i18n";
@@ -25,6 +25,7 @@ export default function ProfileForm({
   const [birthDate, setBirthDate] = useState(existing?.birth_date ?? "");
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const inFlightRef = useRef(false);
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
@@ -39,6 +40,8 @@ export default function ProfileForm({
       setError(copy.invalidDate);
       return;
     }
+    if (inFlightRef.current) return;
+    inFlightRef.current = true;
 
     setSaving(true);
     try {
@@ -51,51 +54,61 @@ export default function ProfileForm({
         setError(copy.errorGeneric);
       }
     } finally {
+      inFlightRef.current = false;
       setSaving(false);
     }
   }
 
   return (
-    <form onSubmit={handleSubmit} className="card card-glow p-6 sm:p-8 space-y-5 w-full max-w-md">
+    <form onSubmit={handleSubmit} className="card card-glow p-7 sm:p-9 space-y-6 w-full max-w-md">
       <div>
-        <h2 className="text-xl font-semibold mb-1">{copy.onboardingTitle}</h2>
-        <ul className="text-xs text-muted space-y-1 mt-3">
+        <span className="eyebrow">{copy.appTitle.replace(/^[^\p{L}]*/u, "")}</span>
+        <h2 className="font-display text-2xl sm:text-[1.75rem] text-foreground mt-2 leading-tight">
+          {copy.onboardingTitle}
+        </h2>
+        <ul className="text-xs text-muted space-y-1.5 mt-4">
           {copy.onboardingPoints.map((point) => (
-            <li key={point} className="flex items-center gap-2">
-              <span className="text-gold">✦</span>
+            <li key={point} className="flex items-center gap-2.5">
+              <span className="text-gold-soft text-[0.6rem]">✦</span>
               {point}
             </li>
           ))}
         </ul>
       </div>
 
-      <div>
-        <label className="text-sm text-muted block mb-1.5">{copy.askName}</label>
-        <input
-          type="text"
-          value={name}
-          onChange={(event) => setName(event.target.value)}
-          placeholder={copy.namePlaceholder}
-          className="input-field w-full p-3 text-sm"
-        />
-      </div>
+      <div className="divider-elegant !my-0" />
 
-      <div>
-        <label className="text-sm text-muted block mb-1.5">{copy.askBirthDate}</label>
-        <input
-          type="text"
-          value={birthDate}
-          onChange={(event) => setBirthDate(event.target.value)}
-          placeholder={copy.birthDatePlaceholder}
-          className="input-field w-full p-3 text-sm"
-        />
+      <div className="space-y-4">
+        <div>
+          <label className="text-xs text-muted uppercase tracking-wide block mb-2">{copy.askName}</label>
+          <input
+            type="text"
+            value={name}
+            onChange={(event) => setName(event.target.value)}
+            placeholder={copy.namePlaceholder}
+            className="input-field w-full px-3.5 py-3 text-sm"
+          />
+        </div>
+
+        <div>
+          <label className="text-xs text-muted uppercase tracking-wide block mb-2">
+            {copy.askBirthDate}
+          </label>
+          <input
+            type="text"
+            value={birthDate}
+            onChange={(event) => setBirthDate(event.target.value)}
+            placeholder={copy.birthDatePlaceholder}
+            className="input-field w-full px-3.5 py-3 text-sm"
+          />
+        </div>
       </div>
 
       <ConsentGate language={language} checked={consent} onChange={onConsentChange} />
 
       {error && <p className="text-sm text-red">{error}</p>}
 
-      <button type="submit" disabled={saving} className="btn-primary w-full py-3 text-sm">
+      <button type="submit" disabled={saving} className="btn-primary w-full py-3.5 text-sm">
         {saving ? copy.loadingReading : copy.saveButton}
       </button>
     </form>

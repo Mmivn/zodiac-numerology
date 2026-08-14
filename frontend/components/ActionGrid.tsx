@@ -18,13 +18,24 @@ export default function ActionGrid<K extends string>({
             key={item.key}
             type="button"
             onClick={() => onSelect(item.key)}
+            aria-pressed={isActive}
             className={
-              "card p-4 text-left transition-colors " +
-              (isActive ? "card-glow border-violet" : "hover:border-violet/60")
+              "card card-interactive relative p-4 sm:p-5 text-left overflow-hidden " +
+              (isActive ? "card-active" : "")
             }
           >
-            <div className="text-sm font-semibold text-foreground">{item.label}</div>
-            <div className="text-xs text-muted mt-1">{item.description}</div>
+            {isActive && (
+              <span className="absolute top-3 right-3 h-1.5 w-1.5 rounded-full bg-gold shadow-[0_0_8px_2px_rgba(207,169,106,0.6)]" />
+            )}
+            <div
+              className={
+                "text-sm font-semibold tracking-wide " +
+                (isActive ? "text-gold-soft" : "text-foreground")
+              }
+            >
+              {item.label}
+            </div>
+            <div className="text-xs text-muted mt-1.5 leading-relaxed">{item.description}</div>
           </button>
         );
       })}
