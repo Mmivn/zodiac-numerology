@@ -60,19 +60,21 @@ def _assert_clean(at):
     assert not at.exception, [str(e) for e in at.exception]
 
 
-def _fresh_app_with_profile(name="Anna", birth_date="20.05.1990"):
+def _fresh_app_with_profile(name="Anna", birth_date="20.05.1990", consent=True):
     at = AppTest.from_file(APP_PATH, default_timeout=30)
     at.run()
     at.text_input(key="profile_name_input").set_value(name)
     at.text_input(key="profile_birthdate_input").set_value(birth_date)
-    # Tests expect AI features to be available; opt-in consent is required
-    # in the UI now — simulate the user checking the consent checkbox and
-    # let Streamlit process the widget changes before submitting the form.
-    at.checkbox(key="profile_form_consent").check()
+    # Tests expect AI features to be available by default; opt-in consent
+    # is required in the UI — simulate the user checking the consent
+    # checkbox and let Streamlit process the widget changes before
+    # submitting the form. consent=False skips this, for tests that cover
+    # the not-yet-consented path itself (see test_ai_button_*_consent*).
+    if consent:
+        at.checkbox(key="profile_form_consent").check()
     at.run()
     at.button(key="cta_profile_form").click().run()
-    # Sanity-check: the user's explicit consent should be recorded.
-    assert at.session_state["consent_given"] is True
+    assert at.session_state["consent_given"] is consent
     return at
 
 
@@ -287,3 +289,90 @@ def test_missing_api_key_shows_friendly_error_not_a_crash(monkeypatch):
     at.button(key="cta_zodiac_my_sign_btn").click().run()
     _assert_clean(at)
     assert len(at.error) >= 1
+
+
+# --------------------------------------------------------------------------
+# Consent: a user who reaches the AI button without having opted in yet
+# must get an actionable, in-context way to consent — never a dead end.
+# See ui/common.py's render_consent_notice_if_needed.
+# --------------------------------------------------------------------------
+
+def test_ai_button_without_consent_offers_inline_consent_checkbox(mock_ai):
+    at = _fresh_app_with_profile(consent=False)
+    assert at.session_state["consent_given"] is False
+
+    at.button(key="card_zodiac_action_my_sign_btn").click().run()
+    at.button(key="cta_zodiac_my_sign_btn").click().run()
+    _assert_clean(at)
+
+    # No AI call was made — consent was never given.
+    assert mock_ai["ask_ai"] == 0
+    # But the user isn't stuck: an inline way to consent, right here, is
+    # visible (not just a dead-end error with no way forward).
+    assert at.checkbox(key="inline_consent_zodiac_my_sign") is not None
+    assert at.session_state["consent_given"] is False
+
+
+def test_checking_inline_consent_then_reclicking_calls_ai(mock_ai):
+    at = _fresh_app_with_profile(consent=False)
+    at.button(key="card_zodiac_action_my_sign_btn").click().run()
+    at.button(key="cta_zodiac_my_sign_btn").click().run()
+    assert mock_ai["ask_ai"] == 0
+
+    # Check the inline consent box — takes effect immediately (it's a
+    # plain widget, not inside a form), no separate "Save" step needed.
+    at.checkbox(key="inline_consent_zodiac_my_sign").check().run()
+    _assert_clean(at)
+    assert at.session_state["consent_given"] is True
+
+    # The AI button now actually works on the very next click.
+    at.button(key="cta_zodiac_my_sign_btn").click().run()
+    _assert_clean(at)
+    assert mock_ai["ask_ai"] == 1
+    text = "\n".join(md.value for md in at.markdown)
+    assert "Характер" in text
+
+
+def test_consent_state_survives_an_unrelated_rerun_before_submit(mock_ai):
+    """Checking consent in the onboarding form, then switching the language
+    selector (a separate, real widget on the same screen) before hitting
+    Save, must not silently lose the checked consent."""
+    at = AppTest.from_file(APP_PATH, default_timeout=30)
+    at.run()
+    at.text_input(key="profile_name_input").set_value("Anna")
+    at.text_input(key="profile_birthdate_input").set_value("20.05.1990")
+    at.checkbox(key="profile_form_consent").check().run()
+
+    at.selectbox(key="language_selectbox").set_value("English").run()
+    assert at.session_state["profile_form_consent"] is True
+
+    at.button(key="cta_profile_form").click().run()
+    _assert_clean(at)
+    assert at.session_state["consent_given"] is True
+
+
+def test_numerology_ai_button_without_consent_offers_inline_consent_checkbox(mock_ai):
+    at = _fresh_app_with_profile(consent=False)
+    at.button(key="card_numerology_action_full_reading_btn").click().run()
+    at.button(key="cta_numerology_full_reading_btn").click().run()
+    _assert_clean(at)
+
+    assert mock_ai["ask_ai"] == 0
+    assert at.checkbox(key="inline_consent_numerology_full_reading") is not None
+
+    at.checkbox(key="inline_consent_numerology_full_reading").check().run()
+    at.button(key="cta_numerology_full_reading_btn").click().run()
+    _assert_clean(at)
+    assert mock_ai["ask_ai"] == 1
+
+
+def test_compatibility_without_consent_offers_inline_consent_checkbox(mock_ai):
+    at = _fresh_app_with_profile(consent=False)
+    at.button(key="card_zodiac_action_compatibility_btn").click().run()
+    at.text_input(key="zodiac_companion_form_name").set_value("Ivan")
+    at.text_input(key="zodiac_companion_form_date").set_value("10/10/1998")
+    at.button(key="cta_zodiac_companion_form").click().run()
+    _assert_clean(at)
+
+    assert mock_ai["ask_ai"] == 0
+    assert at.checkbox(key="inline_consent_zodiac_compatibility") is not None

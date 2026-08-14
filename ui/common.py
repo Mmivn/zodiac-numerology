@@ -11,7 +11,6 @@ Unicode symbol glyphs — see that module's docstring for why.
 """
 import html
 import re
-from datetime import date
 
 import streamlit as st
 
@@ -33,18 +32,17 @@ DATE_REASON_TO_ONBOARDING_KEY = {
 # Session state
 # --------------------------------------------------------------------------
 
-# Query-param keys used to survive a full page reload. st.session_state is
+# Query-param key used to survive a full page reload. st.session_state is
 # per-websocket-session and a browser refresh (F5) opens a brand new one —
-# without this, a reload silently threw away the saved profile and
-# language and dropped the user back at onboarding. The URL is the only
-# state Streamlit gives us that a reload doesn't reset.
-_QP_NAME = "name"
-_QP_BIRTH_DATE = "bdate"
+# without this, a reload silently forgot the chosen language. Only the
+# language is persisted here, deliberately — see _persist_profile_to_url.
 _QP_LANG = "lang"
 
 
 def _persist_profile_to_url(profile):
-    # Do not persist PII (name / birth date) into the URL.
+    # Do not persist PII (name / birth date) into the URL — also means a
+    # profile can never be silently restored on a fresh session without
+    # going through render_profile_form (and its consent checkbox) again.
     # Persist only language to preserve language-on-reload behavior.
     _persist_lang_to_url(profile.language)
 
@@ -53,28 +51,10 @@ def _persist_lang_to_url(lang_code):
     st.query_params[_QP_LANG] = lang_code
 
 
-def _restore_profile_from_url():
-    """Rebuild (profile, lang_code) from the URL's query params.
-
-    Returns (None, lang_code_or_None) if there's no usable saved profile
-    in the URL — the lang code alone may still be present and honored
-    even before a profile exists (e.g. mid-onboarding reload).
-    """
-    qp = st.query_params
-    lang_code = qp.get(_QP_LANG)
-    lang_code = lang_code if lang_code in LOCALES else None
-
-    name = qp.get(_QP_NAME)
-    birth_date_raw = qp.get(_QP_BIRTH_DATE)
-    if not name or not birth_date_raw:
-        return None, lang_code
-    try:
-        birth_date = date.fromisoformat(birth_date_raw)
-    except ValueError:
-        return None, lang_code
-
-    profile = build_user_profile(name, birth_date, lang_code or "ru")
-    return profile, (lang_code or "ru")
+def _restore_lang_from_url():
+    """Return the saved lang_code from the URL's query params, or None."""
+    lang_code = st.query_params.get(_QP_LANG)
+    return lang_code if lang_code in LOCALES else None
 
 
 def ensure_session_defaults():
@@ -86,7 +66,10 @@ def ensure_session_defaults():
     # Consent for sending profile facts (name, birth date) to third-party AI.
     # Default to False (opt-in) to require explicit user consent. Use an
     # explicit existence check to avoid surprising behavior with widget-
-    # backed keys in some test runtimes.
+    # backed keys in some test runtimes. There is deliberately no path that
+    # can create a profile (see above) without also going through the
+    # consent-granting form — so consent_given=False always means the user
+    # genuinely hasn't opted in yet, never a side effect of restored state.
     if "consent_given" not in st.session_state:
         st.session_state["consent_given"] = False
 
@@ -94,10 +77,7 @@ def ensure_session_defaults():
     # reload): once a profile exists in session_state, later reruns
     # within the same session leave it alone.
     if st.session_state["profile"] is None:
-        restored_profile, restored_lang = _restore_profile_from_url()
-        if restored_profile is not None:
-            st.session_state["profile"] = restored_profile
-            st.session_state["show_profile_form"] = False
+        restored_lang = _restore_lang_from_url()
         if restored_lang is not None:
             st.session_state["lang_code"] = restored_lang
 
@@ -580,6 +560,51 @@ def serve_existing_reading(t, cache_key, signature, lang_code):
     return _translate_and_store(t, entry, lang_code)
 
 
+def render_consent_notice_if_needed(t, cache_key):
+    """If consent hasn't been granted yet, render an inline way to give it
+    right in the AI panel, and report whether the caller may proceed with
+    an AI call this run.
+
+    Callers must call this UNCONDITIONALLY on every render of a panel that
+    can call the AI — never only inside an "if clicked" branch. A plain
+    (non-form) checkbox only reflects a check on the *next* rerun after
+    it's clicked, and that next rerun is not itself a button click/form
+    submit — if this were only reached from inside an "if clicked or
+    submitted" gate, that gate would already have bailed out before ever
+    re-rendering the checkbox, so the click that checked it would appear
+    to do nothing. Calling this unconditionally means the checkbox is
+    always reachable while consent is missing, and the moment it's
+    checked, this starts returning True on every subsequent run — the
+    user's very next click on the actual AI button then goes through
+    normally, with no separate "Save profile" round trip required.
+
+    The checkbox is a plain (non-form) widget, so checking it takes effect
+    immediately, with no dependency on submitting anything else. `cache_key`
+    makes the widget key unique per panel — st.tabs() renders every tab's
+    body on every run (only the inactive tab's DOM is hidden), so more than
+    one panel could need this in the same run.
+
+    Returns True if consent is (now) given — including if it already was
+    — and False if it's still pending, in which case the caller must not
+    call call_ai_cached this run (but may still render everything else,
+    e.g. an already-cached reading from before).
+    """
+    if st.session_state.get("consent_given", False):
+        return True
+
+    gui = t["gui"]
+    st.warning(t["errors"].get("consent_required", "Consent required to call the AI."))
+    consent_now = st.checkbox(
+        gui.get("consent_label", ""),
+        value=False,
+        key=f"inline_consent_{cache_key}",
+    )
+    if consent_now:
+        st.session_state["consent_given"] = True
+        return True
+    return False
+
+
 def call_ai_cached(t, cache_key, signature, lang_code, instructions, message, extra=None):
     """Return reading text for (cache_key, signature) in `lang_code`.
 
@@ -844,7 +869,13 @@ def render_ai_section(
         cache_key, icon, panel_title, panel_description, button_label, button_key
     )
 
+    # Unconditional (see render_consent_notice_if_needed's docstring for
+    # why it must not be nested inside the "if clicked" gate below).
+    consent_ok = render_consent_notice_if_needed(t, cache_key)
+
     if not clicked and not has_canonical_reading(cache_key, signature):
+        return
+    if not consent_ok:
         return
 
     text = call_ai_cached(t, cache_key, signature, lang_code, instructions, message)
@@ -915,6 +946,10 @@ def render_ask_ai_panel(
     question = question.strip()
     signature = f"{signature_key}|{question}"
 
+    # Unconditional (see render_consent_notice_if_needed's docstring) —
+    # must run every time this panel renders, not only after a submit.
+    consent_ok = render_consent_notice_if_needed(t, cache_key)
+
     if not submitted:
         text = serve_existing_reading(t, cache_key, signature, lang_code)
         if text:
@@ -923,6 +958,9 @@ def render_ask_ai_panel(
 
     if not question:
         st.error(t["common"]["empty_input"])
+        return
+
+    if not consent_ok:
         return
 
     message = base_facts + "\n\n" + question

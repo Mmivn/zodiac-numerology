@@ -21,6 +21,7 @@ from ui.common import (
     render_ai_section,
     render_ask_ai_panel,
     render_companion_form,
+    render_consent_notice_if_needed,
     render_reading_card,
     serve_existing_reading,
     trigger_scroll_to,
@@ -150,6 +151,10 @@ def _render_compatibility(t, profile, sign_name, descriptions):
     primary_fingerprint = profile.zodiac_sign
     last_signature_key = f"{cache_key}_last_signature"
 
+    # Unconditional (see render_consent_notice_if_needed's docstring) —
+    # must run every time this panel renders, not only after a submit.
+    consent_ok = render_consent_notice_if_needed(t, cache_key)
+
     companion = render_companion_form(
         t,
         "zodiac_companion_form",
@@ -182,6 +187,9 @@ def _render_compatibility(t, profile, sign_name, descriptions):
     )
     message = facts + "\n\n" + zt["requests"]["compatibility"]
     signature = f"{primary_fingerprint}|{companion.zodiac_sign}|{companion.name}"
+
+    if not consent_ok:
+        return
 
     text = call_ai_cached(
         t, cache_key, signature, lang_code, zt["instructions"], message,
