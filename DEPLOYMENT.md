@@ -51,11 +51,30 @@ automatically and pre-fills everything except the secret values below.
 
 ## Frontend — Vercel
 
+> **If the deployed site returns `404 NOT_FOUND` on every route**, this is
+> almost always **Root Directory not set to `frontend`** — this is a
+> monorepo (backend/ and frontend/ both at the repo root, no
+> package.json at the repo root itself), so unless Root Directory is set
+> explicitly, Vercel tries to build from the repo root, finds no Next.js
+> app there, and the deployment serves nothing. `frontend/vercel.json`
+> now pins `framework: "nextjs"` explicitly (removes one failure mode),
+> but **Root Directory itself is a Project Settings field Vercel does
+> not expose via any committed file** — it must be set by hand, once,
+> in the dashboard:
+> Project → **Settings → General → Root Directory → Edit → `frontend`**
+> → Save, then **Deployments → ⋯ → Redeploy** (unchecking any build
+> cache) on the latest deployment.
+
 1. Go to https://vercel.com/new and import `Mmivn/zodiac-numerology`.
 2. In the import screen (or Project Settings → General afterward):
-   - **Root Directory:** `frontend`
-   - **Framework Preset:** Next.js (auto-detected)
+   - **Root Directory:** `frontend` — **do not leave this at the repo root**
+   - **Framework Preset:** Next.js (auto-detected once Root Directory is
+     set correctly; `frontend/vercel.json` also pins it explicitly)
    - **Build Command:** `next build` (default — leave as-is)
+   - **Output Directory:** leave at the framework default — do **not**
+     manually set this to `.next`; Vercel's Next.js builder has its own
+     internal convention and a manual override here is a common cause of
+     broken deployments
    - **Install Command:** `npm install` (default — leave as-is)
    - **Node.js Version:** 20.x or later (Project Settings → General →
      Node.js Version — Next.js 16 requires Node ≥20.9)
