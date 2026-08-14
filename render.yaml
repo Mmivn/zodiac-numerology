@@ -1,0 +1,52 @@
+# Render Blueprint for the FastAPI backend. Deploy via Render dashboard ->
+# New -> Blueprint -> select this repo. Render reads this file
+# automatically (must be at the repo root) and pre-fills almost
+# everything below — only the marked secret values still need to be
+# entered by hand in the dashboard (sync: false means "never read this
+# from a file", Render always prompts for it interactively instead).
+#
+# Backend root directory: backend
+# Backend start command:  uvicorn main:app --host 0.0.0.0 --port $PORT
+# Python version: pinned below via the PYTHON_VERSION env var (Render's
+# own convention — no runtime.txt/​.python-version needed alongside it)
+services:
+  - type: web
+    name: zodiac-numerology-backend
+    runtime: python
+    plan: free
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.8
+      # Frontend origin(s) allowed to call this API (CORS) — comma-separated.
+      # Set to the real Vercel production URL once the frontend is deployed;
+      # localhost is only useful for testing against a deployed backend from
+      # a local frontend dev server.
+      - key: FRONTEND_ORIGIN
+        value: http://localhost:3000
+      # Routing — pinned explicitly, see backend/.env.example for why.
+      - key: PROVIDER_ORDER
+        value: gemini,groq,mistral,cloudflare,openai
+      - key: TRANSLATION_PROVIDER_ORDER
+        value: gemini,groq,mistral,cloudflare,openai
+      - key: PAID_FALLBACK_ENABLED
+        value: "true"
+      - key: DAILY_PAID_BUDGET_USD
+        value: "2.00"
+      # Secrets — never in this file. Enter real values in the Render
+      # dashboard (Environment tab) after the Blueprint is created.
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: GROQ_API_KEY
+        sync: false
+      - key: MISTRAL_API_KEY
+        sync: false
+      - key: CLOUDFLARE_API_TOKEN
+        sync: false
+      - key: CLOUDFLARE_ACCOUNT_ID
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
