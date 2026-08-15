@@ -174,7 +174,7 @@ export default function CompatibilityPanel({
         <div className="rounded-xl border border-red/30 bg-red/5 p-4 text-sm text-red">{error}</div>
       )}
 
-      {loading && !result && <ReadingSkeleton />}
+      {(loading || translating) && !result && <ReadingSkeleton />}
 
       {result && (
         <>
