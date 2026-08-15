@@ -110,7 +110,7 @@ export default function Home() {
             change took effect, without an effect calling setState. */}
         <div key={language} className="reveal">
           <span className="eyebrow">Astrology · Numerology · AI</span>
-          <h1 className="font-display text-2xl sm:text-3xl text-foreground mt-1.5">
+          <h1 className="font-display text-2xl sm:text-3xl text-foreground mt-1.5 cosmic-headline">
             {copy.appTitle}
           </h1>
           <p className="text-xs text-muted mt-1.5 hidden sm:block max-w-sm leading-relaxed">

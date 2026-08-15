@@ -34,9 +34,9 @@
   /* Elevation tiers — depth between background, supporting cards, and the
      "feature panel" content (hero, profile form, AI reading) that should
      read as physically closer to the viewer. */
-  --shadow-elevation-1: 0 10px 28px -14px rgba(0, 0, 0, 0.55);
-  --shadow-elevation-2: 0 24px 70px -20px rgba(0, 0, 0, 0.65);
-  --shadow-elevation-3: 0 40px 100px -24px rgba(0, 0, 0, 0.7), 0 16px 40px -16px rgba(111, 98, 214, 0.18);
+  --shadow-elevation-1: 0 14px 34px -16px rgba(0, 0, 0, 0.6), 0 3px 8px -3px rgba(0, 0, 0, 0.4);
+  --shadow-elevation-2: 0 30px 80px -22px rgba(0, 0, 0, 0.7), 0 8px 22px -8px rgba(111, 98, 214, 0.2);
+  --shadow-elevation-3: 0 50px 130px -26px rgba(0, 0, 0, 0.78), 0 20px 50px -18px rgba(111, 98, 214, 0.25);
 }
 
 @theme inline {
@@ -64,13 +64,22 @@
   box-sizing: border-box;
 }
 
-html,
-body {
+html {
+  /* Deliberately on <html>, not <body>: when a solid background sits
+     on <body> and <body> is *also* a scroll container (overflow-x:
+     hidden here forces overflow-y to auto) with position:relative,
+     Chromium paints that background — propagated to the canvas — above
+     <body>'s own negative-z-index `position:fixed` children instead of
+     below them, silently hiding the entire cosmic scene (every
+     starfield/planet/orbit layer uses a negative z-index). Giving
+     <html> its own background sidesteps the propagation case
+     entirely — it paints the canvas directly. */
   background: var(--background);
-  color: var(--foreground);
 }
 
 body {
+  background: transparent;
+  color: var(--foreground);
   font-family: var(--font-sans);
   min-height: 100dvh;
   position: relative;
@@ -79,23 +88,30 @@ body {
 }
 
 /* ------------------------------------------------------------
-   Cosmic background: a depth-layered stack — deepest to nearest:
-     1. .cosmic-backdrop   base gradient wash, slow drift
-     2. .cosmic-orbs        large soft blurred light orbs, each on
-                              its own independent slow float loop
-                              (different durations = parallax
-                              illusion, no pointer-tracking needed)
-     3. .cosmic-constellation  faint hand-placed star/line accents
-     4. .cosmic-stars          two star depths (near/far), independent
-                                 twinkle timing
-   All fixed, z-index below content, pointer-events:none — never
-   intercepts interaction, never overpowers the foreground. Every
-   animated layer has a prefers-reduced-motion off-switch.
+   Cosmic background: an explicit, immersive depth stack — deepest to
+   nearest (see components/CosmicBackground.tsx for how these mount):
+
+     z  -9  .cosmic-backdrop        base gradient wash, slow drift
+     z  -8..-6  .starfield-parallax-{far,mid,near}   three star depths
+     z  -5  .cosmic-orbs            large soft blurred nebula glows
+     z  -4  .planet-parallax-*      the three planets
+     z  -3  .orbit-a / .orbit-b     glowing elliptical orbit rings
+     z  -2  .cosmic-constellation   faint hand-placed star/line accents
+     —      page content (default stacking, paints above all of the
+            above automatically — see body's stacking context)
+     z  40  .cosmic-foreground-glow a near-invisible vignette + top glow
+
+   All fixed, pointer-events:none — never intercepts interaction, never
+   overpowers the foreground. Every animated layer has a
+   prefers-reduced-motion off-switch, and Saturn/the moon/the orbits/
+   the constellation are desktop+ only (`hidden sm:block` at the call
+   site) — the mobile scene is deliberately just stars, the backdrop,
+   and the one hero planet.
    ------------------------------------------------------------ */
 .cosmic-backdrop {
   position: fixed;
   inset: 0;
-  z-index: -5;
+  z-index: -9;
   pointer-events: none;
   background:
     radial-gradient(ellipse 60% 45% at 12% -8%, rgba(111, 98, 214, 0.20), transparent 60%),
@@ -114,6 +130,149 @@ body {
   }
 }
 
+/* ------------------------------------------------------------
+   Starfield — three depth layers (far/mid/near), each a seeded,
+   deterministic set of SVG circles (lib/starfield.ts +
+   components/Starfield.tsx). Bigger/brighter/faster-twinkling toward
+   the front, plus a slow independent per-layer drift, is the whole
+   depth illusion before anything else even moves. `--parallax-speed`
+   is read by ScrollParallax.tsx's global `--scroll-y` custom property
+   — each layer drifts a little further than the one behind it as the
+   page scrolls (desktop + motion-safe only, see ScrollParallax.tsx).
+   ------------------------------------------------------------ */
+.starfield-parallax {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  transform: translateY(calc(var(--scroll-y, 0px) * var(--parallax-speed, 0)));
+}
+
+.starfield-parallax-far {
+  z-index: -8;
+  --parallax-speed: 0.015;
+}
+
+.starfield-parallax-mid {
+  z-index: -7;
+  --parallax-speed: 0.03;
+}
+
+.starfield-parallax-near {
+  z-index: -6;
+  --parallax-speed: 0.055;
+}
+
+.starfield-layer {
+  width: 100%;
+  height: 100%;
+}
+
+.starfield-far {
+  animation: star-drift-far 100s linear infinite alternate;
+}
+
+.starfield-mid {
+  animation: star-drift-mid 65s linear infinite alternate;
+}
+
+.starfield-near {
+  animation: star-drift-near 42s linear infinite alternate;
+}
+
+@keyframes star-drift-far {
+  from {
+    transform: translate(0, 0);
+  }
+  to {
+    transform: translate(-1%, 0.6%);
+  }
+}
+
+@keyframes star-drift-mid {
+  from {
+    transform: translate(0, 0);
+  }
+  to {
+    transform: translate(-1.8%, 1%);
+  }
+}
+
+@keyframes star-drift-near {
+  from {
+    transform: translate(0, 0);
+  }
+  to {
+    transform: translate(-2.6%, 1.4%);
+  }
+}
+
+/* Three twinkle keyframes, cycled across stars by index (see
+   Starfield.tsx) so the field never visibly pulses in sync. Each star
+   sets its own `--star-peak` custom property (its randomized max
+   brightness) plus its own animation-delay/duration inline — the
+   keyframes below only define the *shape* of the twinkle, not the
+   per-star values. */
+.star-twinkle-0 {
+  animation-name: star-twinkle-a;
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+  animation-direction: alternate;
+}
+
+.star-twinkle-1 {
+  animation-name: star-twinkle-b;
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+  animation-direction: alternate;
+}
+
+.star-twinkle-2 {
+  animation-name: star-twinkle-c;
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+  animation-direction: alternate;
+}
+
+@keyframes star-twinkle-a {
+  0% {
+    opacity: calc(var(--star-peak, 0.6) * 0.3);
+  }
+  100% {
+    opacity: var(--star-peak, 0.6);
+  }
+}
+
+@keyframes star-twinkle-b {
+  0% {
+    opacity: calc(var(--star-peak, 0.6) * 0.55);
+  }
+  100% {
+    opacity: var(--star-peak, 0.6);
+  }
+}
+
+@keyframes star-twinkle-c {
+  0% {
+    opacity: calc(var(--star-peak, 0.6) * 0.75);
+  }
+  100% {
+    opacity: var(--star-peak, 0.6);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .starfield-parallax,
+  .starfield-far,
+  .starfield-mid,
+  .starfield-near,
+  .star-twinkle-0,
+  .star-twinkle-1,
+  .star-twinkle-2 {
+    animation: none;
+    transform: none;
+  }
+}
+
 /* Blurred light orbs — the "depth between background and content"
    effect. Each orb drifts on its own slow, independent loop; different
    durations/sizes read as layers at different distances without any
@@ -121,7 +280,7 @@ body {
 .cosmic-orbs {
   position: fixed;
   inset: 0;
-  z-index: -4;
+  z-index: -5;
   pointer-events: none;
   overflow: hidden;
 }
@@ -200,7 +359,7 @@ body {
 .cosmic-constellation {
   position: fixed;
   inset: 0;
-  z-index: -3;
+  z-index: -2;
   pointer-events: none;
   opacity: 0.35;
 }
@@ -210,76 +369,331 @@ body {
   height: 100%;
 }
 
-.cosmic-stars {
-  position: fixed;
-  inset: 0;
-  z-index: -2;
-  pointer-events: none;
-  opacity: 0.6;
-  background-image:
-    radial-gradient(1px 1px at 8% 22%, #fff, transparent 100%),
-    radial-gradient(1px 1px at 22% 68%, #fff, transparent 100%),
-    radial-gradient(1.2px 1.2px at 35% 15%, #fff, transparent 100%),
-    radial-gradient(1px 1px at 48% 82%, #fff, transparent 100%),
-    radial-gradient(1.4px 1.4px at 63% 38%, #fff, transparent 100%),
-    radial-gradient(1px 1px at 74% 12%, #fff, transparent 100%),
-    radial-gradient(1px 1px at 82% 60%, #fff, transparent 100%),
-    radial-gradient(1.2px 1.2px at 91% 28%, #fff, transparent 100%),
-    radial-gradient(1px 1px at 15% 90%, #fff, transparent 100%),
-    radial-gradient(1px 1px at 58% 95%, #fff, transparent 100%);
-  background-repeat: no-repeat;
-  animation: star-twinkle 6s ease-in-out infinite alternate;
-}
-
-/* A second, dimmer/smaller "far" star layer moving at its own slow
-   drift — combined with the nearer layer above, this is the
-   parallax-like depth cue for the starfield without JS. */
-.cosmic-stars-far {
-  position: fixed;
-  inset: 0;
-  z-index: -3;
-  pointer-events: none;
-  opacity: 0.35;
-  background-image:
-    radial-gradient(0.8px 0.8px at 12% 42%, #fff, transparent 100%),
-    radial-gradient(0.8px 0.8px at 28% 8%, #fff, transparent 100%),
-    radial-gradient(1px 1px at 44% 58%, #fff, transparent 100%),
-    radial-gradient(0.8px 0.8px at 55% 20%, #fff, transparent 100%),
-    radial-gradient(0.9px 0.9px at 68% 75%, #fff, transparent 100%),
-    radial-gradient(0.8px 0.8px at 79% 44%, #fff, transparent 100%),
-    radial-gradient(1px 1px at 88% 85%, #fff, transparent 100%),
-    radial-gradient(0.8px 0.8px at 95% 12%, #fff, transparent 100%);
-  background-repeat: no-repeat;
-  animation: star-drift-far 70s linear infinite alternate, star-twinkle 9s ease-in-out infinite alternate;
-}
-
-@keyframes star-twinkle {
-  0% {
-    opacity: 0.35;
-  }
-  100% {
-    opacity: 0.75;
-  }
-}
-
-@keyframes star-drift-far {
-  0% {
-    transform: translate(0, 0);
-  }
-  100% {
-    transform: translate(-1.2%, 1%);
-  }
-}
-
 @media (prefers-reduced-motion: reduce) {
   .cosmic-backdrop,
   .cosmic-orb-1,
   .cosmic-orb-2,
-  .cosmic-orb-3,
-  .cosmic-stars,
-  .cosmic-stars-far {
+  .cosmic-orb-3 {
     animation: none;
   }
+}
+
+/* ------------------------------------------------------------
+   Planets — see components/Planet.tsx for how each is built (a
+   clipped, slow-rotating cloud-band layer under a static shading
+   layer, so the light direction never spins with the surface).
+   `.planet-parallax-*` is the fixed, positioned, scroll-parallaxed
+   outer shell; `.planet` is the glow + float layer; `.planet-svg` is
+   the sphere itself.
+   ------------------------------------------------------------ */
+.planet-parallax {
+  position: fixed;
+  z-index: -4;
+  pointer-events: none;
+  transform: translateY(calc(var(--scroll-y, 0px) * var(--parallax-speed, 0)));
+}
+
+.planet-parallax-hero {
+  --parallax-speed: 0.04;
+  top: -9vh;
+  right: -6vw;
+  width: 34vw;
+  height: 34vw;
+  min-width: 260px;
+  min-height: 260px;
+  max-width: 460px;
+  max-height: 460px;
+}
+
+.planet-parallax-saturn {
+  --parallax-speed: 0.08;
+  top: 46vh;
+  left: -9vw;
+  width: 23vw;
+  height: 23vw;
+  min-width: 190px;
+  min-height: 190px;
+  max-width: 320px;
+  max-height: 320px;
+}
+
+.planet-parallax-moon {
+  --parallax-speed: 0.12;
+  top: 76vh;
+  right: 6vw;
+  width: 11vw;
+  height: 11vw;
+  min-width: 76px;
+  min-height: 76px;
+  max-width: 130px;
+  max-height: 130px;
+}
+
+.planet {
+  width: 100%;
+  height: 100%;
+}
+
+.planet-svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.planet-hero {
+  filter: drop-shadow(0 0 55px rgba(111, 98, 214, 0.4)) drop-shadow(0 35px 90px rgba(0, 0, 0, 0.55));
+}
+
+.planet-saturn {
+  filter: drop-shadow(0 0 40px rgba(207, 169, 106, 0.4)) drop-shadow(0 22px 60px rgba(0, 0, 0, 0.5));
+}
+
+.planet-moon {
+  filter: drop-shadow(0 0 26px rgba(196, 181, 253, 0.35)) drop-shadow(0 14px 40px rgba(0, 0, 0, 0.45));
+}
+
+/* Compound selector (not source order) is what makes this win over
+   .float-slow's own animation-delay: 0s below — the moon and the hero
+   planet both use .float-slow but must not visibly bob in sync. */
+.planet-moon.float-slow {
+  animation-delay: -5s;
+}
+
+/* The rotation illusion: two copies of the same cloud-band pattern,
+   exactly one tile-width apart, sliding left forever — see the comment
+   in Planet.tsx for why that makes the loop seamless. */
+.planet-texture {
+  animation: planet-rotate 85s linear infinite;
+}
+
+.planet-saturn .planet-texture {
+  animation-duration: 105s;
+}
+
+.planet-moon .planet-texture {
+  animation-duration: 130s;
+}
+
+@keyframes planet-rotate {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-300px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .planet-parallax,
+  .planet-texture {
+    animation: none;
+    transform: none;
+  }
+}
+
+/* ------------------------------------------------------------
+   Orbit rings — a glowing elliptical stroke (SVG, faded at both ends)
+   plus a small satellite travelling around it. The satellite's
+   left/top keyframes are twelve points sampled evenly around a
+   same-proportioned ellipse — see components/OrbitRings.tsx.
+   ------------------------------------------------------------ */
+.orbit {
+  position: fixed;
+  z-index: -3;
+  pointer-events: none;
+}
+
+.orbit-a {
+  top: 8vh;
+  right: -4vw;
+  width: 42vw;
+  height: 20vw;
+  min-width: 320px;
+  min-height: 150px;
+  max-width: 620px;
+  max-height: 300px;
+}
+
+.orbit-b {
+  top: 52vh;
+  left: -6vw;
+  width: 26vw;
+  height: 13vw;
+  min-width: 220px;
+  min-height: 110px;
+  max-width: 380px;
+  max-height: 190px;
+}
+
+.orbit-ring-svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  filter: drop-shadow(0 0 6px rgba(228, 201, 154, 0.3));
+}
+
+.orbit-b .orbit-ring-svg {
+  filter: drop-shadow(0 0 5px rgba(195, 182, 247, 0.28));
+}
+
+.orbit-satellite {
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--gold-soft);
+  box-shadow: 0 0 8px 2px rgba(228, 201, 154, 0.7);
+  transform: translate(-50%, -50%);
+}
+
+.orbit-satellite-a {
+  animation: orbit-travel-a 34s linear infinite;
+}
+
+.orbit-satellite-b {
+  width: 5px;
+  height: 5px;
+  background: var(--lavender);
+  box-shadow: 0 0 7px 2px rgba(195, 182, 247, 0.7);
+  animation: orbit-travel-b 46s linear infinite;
+}
+
+/* Twelve points around an ellipse (rx 48%, ry 32% of the orbit's own
+   box, center 50% 50%) sampled every 30 degrees — a smooth, exactly
+   closed loop with no JS and no path-length surprises. */
+@keyframes orbit-travel-a {
+  0% {
+    left: 98%;
+    top: 50%;
+  }
+  8.33% {
+    left: 91.6%;
+    top: 66%;
+  }
+  16.67% {
+    left: 74%;
+    top: 77.7%;
+  }
+  25% {
+    left: 50%;
+    top: 82%;
+  }
+  33.33% {
+    left: 26%;
+    top: 77.7%;
+  }
+  41.67% {
+    left: 8.4%;
+    top: 66%;
+  }
+  50% {
+    left: 2%;
+    top: 50%;
+  }
+  58.33% {
+    left: 8.4%;
+    top: 34%;
+  }
+  66.67% {
+    left: 26%;
+    top: 22.3%;
+  }
+  75% {
+    left: 50%;
+    top: 18%;
+  }
+  83.33% {
+    left: 74%;
+    top: 22.3%;
+  }
+  91.67% {
+    left: 91.6%;
+    top: 34%;
+  }
+  100% {
+    left: 98%;
+    top: 50%;
+  }
+}
+
+/* Same construction, rx 44% / ry 20%. */
+@keyframes orbit-travel-b {
+  0% {
+    left: 94%;
+    top: 50%;
+  }
+  8.33% {
+    left: 88.1%;
+    top: 60%;
+  }
+  16.67% {
+    left: 72%;
+    top: 67.3%;
+  }
+  25% {
+    left: 50%;
+    top: 70%;
+  }
+  33.33% {
+    left: 28%;
+    top: 67.3%;
+  }
+  41.67% {
+    left: 11.9%;
+    top: 60%;
+  }
+  50% {
+    left: 6%;
+    top: 50%;
+  }
+  58.33% {
+    left: 11.9%;
+    top: 40%;
+  }
+  66.67% {
+    left: 28%;
+    top: 32.7%;
+  }
+  75% {
+    left: 50%;
+    top: 30%;
+  }
+  83.33% {
+    left: 72%;
+    top: 32.7%;
+  }
+  91.67% {
+    left: 88.1%;
+    top: 40%;
+  }
+  100% {
+    left: 94%;
+    top: 50%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .orbit-satellite-a,
+  .orbit-satellite-b {
+    animation: none;
+    left: 50%;
+    top: 50%;
+  }
+}
+
+/* A near-invisible vignette + top glow above every other layer,
+   including page content — the scene's "foreground glow". Purely
+   atmospheric: transparent through the whole readable center of the
+   page (only the edges/top/bottom carry any tint), so it never reduces
+   text contrast. */
+.cosmic-foreground-glow {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 70% 45% at 50% 100%, rgba(0, 0, 0, 0.32), transparent 62%),
+    radial-gradient(ellipse 60% 35% at 50% -6%, rgba(111, 98, 214, 0.12), transparent 65%);
 }
 
 /* ------------------------------------------------------------
@@ -296,6 +710,13 @@ body {
   letter-spacing: 0.18em;
   text-transform: uppercase;
   color: var(--gold-soft);
+}
+
+/* A soft, premium glow behind the main headline — atmospheric, not a
+   bright neon outline. Two very low-opacity shadow passes at different
+   blur radii is what reads as "glow" rather than a fake drop-shadow. */
+.cosmic-headline {
+  text-shadow: 0 0 30px rgba(196, 181, 253, 0.35), 0 0 64px rgba(111, 98, 214, 0.2);
 }
 
 /* ------------------------------------------------------------
@@ -317,7 +738,7 @@ body {
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.05),
     var(--shadow-elevation-1);
-  transition: border-color 0.25s ease, box-shadow 0.3s ease, transform 0.3s ease;
+  transition: border-color 0.25s ease, box-shadow 0.35s ease, transform 0.35s ease;
 }
 
 /* A near-invisible champagne rim light along the top edge — visible
@@ -352,13 +773,19 @@ body {
 
 .card-interactive {
   cursor: pointer;
+  /* perspective() as the first function in the transform list gives
+     this element its own local vanishing point, so the rotate below
+     reads as a real (if subtle) tilt rather than a flat skew — no
+     wrapping "perspective" container needed. */
+  transform: perspective(900px) rotateX(0deg) rotateY(0deg) translateY(0) translateZ(0);
 }
 
 .card-interactive:hover {
   border-color: var(--border-strong);
-  transform: translateY(-3px);
+  transform: perspective(900px) rotateX(3deg) rotateY(-3deg) translateY(-6px) translateZ(8px);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 1px 0 rgba(228, 201, 154, 0.15),
     var(--shadow-elevation-2);
 }
 
