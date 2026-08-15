@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 
 import { ApiError, requestCompatibility } from "@/lib/api";
 import { t } from "@/lib/i18n";
+import { useLanguageSyncedReading, type TranslatableEntry } from "@/lib/useLanguageSyncedReading";
 import type { CompatibilityResult, Language } from "@/lib/types";
 import ConsentGate from "./ConsentGate";
 import ReadingCard from "./ReadingCard";
@@ -18,6 +19,7 @@ export default function CompatibilityPanel({
   onConsentChange,
   title,
   description,
+  cache,
 }: {
   domain: "zodiac" | "numerology";
   name: string;
@@ -27,14 +29,30 @@ export default function CompatibilityPanel({
   onConsentChange: (value: boolean) => void;
   title: string;
   description: string;
+  /** Shared with AIPanel/AskAiPanel — see lib/useLanguageSyncedReading.ts.
+   * Keyed on the last *submitted* companion so a language switch
+   * translates the existing result instead of losing it. The two
+   * people's zodiac signs / life path numbers don't vary by language,
+   * so they live in the cache entry's `extra`, not `byLanguage`. */
+  cache: Map<string, TranslatableEntry>;
 }) {
-  // See AskAiPanel.tsx for why this component must never keep showing a
-  // stale-language result — fixed the same way, at the call site
-  // (`<CompatibilityPanel key={language} .../>`), not with an effect.
   const copy = t(language);
   const [companionName, setCompanionName] = useState("");
   const [companionBirthDate, setCompanionBirthDate] = useState("");
-  const [result, setResult] = useState<CompatibilityResult | null>(null);
+  const [lastCompanion, setLastCompanion] = useState<{ name: string; birthDate: string } | null>(
+    null
+  );
+  const cacheKey = lastCompanion ? `${domain}:compatibility:${lastCompanion.name}|${lastCompanion.birthDate}` : null;
+  const { result: langResult, translating, refresh } = useLanguageSyncedReading(
+    cache,
+    cacheKey,
+    language,
+    consent
+  );
+  const extra = cacheKey ? cache.get(cacheKey)?.extra : undefined;
+  const result: CompatibilityResult | null = langResult
+    ? ({ ...langResult, ...(extra ?? {}) } as CompatibilityResult)
+    : null;
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showConsentGate, setShowConsentGate] = useState(false);
@@ -52,15 +70,35 @@ export default function CompatibilityPanel({
     setShowConsentGate(false);
     setLoading(true);
     setError(null);
+    const trimmedName = companionName.trim();
+    const trimmedBirthDate = companionBirthDate.trim();
     try {
       const reading = await requestCompatibility({
         domain,
         personA: { name, birthDate },
-        personB: { name: companionName.trim(), birthDate: companionBirthDate.trim() },
+        personB: { name: trimmedName, birthDate: trimmedBirthDate },
         language,
         consent,
       });
-      setResult(reading);
+      const {
+        person_a_zodiac_sign,
+        person_b_zodiac_sign,
+        person_a_life_path_number,
+        person_b_life_path_number,
+        ...base
+      } = reading;
+      cache.set(`${domain}:compatibility:${trimmedName}|${trimmedBirthDate}`, {
+        sourceLanguage: language,
+        byLanguage: { [language]: base },
+        extra: {
+          person_a_zodiac_sign,
+          person_b_zodiac_sign,
+          person_a_life_path_number,
+          person_b_life_path_number,
+        },
+      });
+      setLastCompanion({ name: trimmedName, birthDate: trimmedBirthDate });
+      refresh();
     } catch (err) {
       if (err instanceof ApiError) {
         setError(err.detail || copy.errorGeneric);
@@ -144,6 +182,7 @@ export default function CompatibilityPanel({
           <p className="text-xs text-muted px-1">
             {copy.poweredBy}: {result.provider} · {result.model}
             {result.fallback_count > 0 ? ` · fallback ×${result.fallback_count}` : ""}
+            {translating ? ` · ${copy.translatingReading}` : ""}
           </p>
         </>
       )}

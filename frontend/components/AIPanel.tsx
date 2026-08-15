@@ -4,14 +4,11 @@ import { useRef, useState } from "react";
 
 import { ApiError, requestAIReading } from "@/lib/api";
 import { t } from "@/lib/i18n";
-import type { AIReadingResult, Language, NumerologyKind, ZodiacKind } from "@/lib/types";
+import { useLanguageSyncedReading, type TranslatableEntry } from "@/lib/useLanguageSyncedReading";
+import type { Language, NumerologyKind, ZodiacKind } from "@/lib/types";
 import ConsentGate from "./ConsentGate";
 import ReadingCard from "./ReadingCard";
 import ReadingSkeleton from "./ReadingSkeleton";
-
-interface CacheEntry {
-  result: AIReadingResult;
-}
 
 export default function AIPanel({
   domain,
@@ -40,27 +37,16 @@ export default function AIPanel({
   language: Language;
   consent: boolean;
   onConsentChange: (value: boolean) => void;
-  /** Shared across panels so switching tabs/actions doesn't re-fetch an
-   * already-generated reading for the same (domain, kind, signature,
-   * language) combination this session. */
-  cache: Map<string, CacheEntry>;
+  /** Shared across panels — one entry per (domain, kind, signature),
+   * deliberately never keyed on language: a language switch translates
+   * the existing entry (see useLanguageSyncedReading) instead of losing
+   * it. Switching tabs/actions and back still shows an already-fetched
+   * reading in whichever language is current without a re-fetch. */
+  cache: Map<string, TranslatableEntry>;
 }) {
   const copy = t(language);
-  const cacheKey = `${domain}:${kind}:${signature}:${language}`;
-  // The language bug this component must not have: `result` is local
-  // state, and if this instance were reused across a language (or kind)
-  // switch, a reading fetched in one language would keep displaying
-  // verbatim after switching to another. Fixed at the call site
-  // (ZodiacDashboard/NumerologyDashboard render `<AIPanel key={cacheKey}
-  // .../>`) — React's own recommended way to reset all state when an
-  // identity changes is a key, not an effect that calls setState (which
-  // is also an anti-pattern the linter correctly flags: "you might not
-  // need an effect" for state that's really just derived from props).
-  // Keying on cacheKey means every prop this component's state could go
-  // stale against — domain, kind, signature, language — forces a full,
-  // clean remount, and the useState initializer below then naturally
-  // pre-fills from the new language's cache entry if one exists.
-  const [result, setResult] = useState<AIReadingResult | null>(cache.get(cacheKey)?.result ?? null);
+  const cacheKey = `${domain}:${kind}:${signature}`;
+  const { result, translating, refresh } = useLanguageSyncedReading(cache, cacheKey, language, consent);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showConsentGate, setShowConsentGate] = useState(false);
@@ -91,8 +77,11 @@ export default function AIPanel({
         language,
         consent,
       });
-      cache.set(cacheKey, { result: reading });
-      setResult(reading);
+      // A fresh generation becomes the new canonical reading — any
+      // translations cached under the old canonical text no longer
+      // match, so this replaces the entry rather than merging into it.
+      cache.set(cacheKey, { sourceLanguage: language, byLanguage: { [language]: reading } });
+      refresh();
     } catch (err) {
       if (err instanceof ApiError) {
         if (err.status === 503) setError(copy.serviceUnavailable);
@@ -151,6 +140,7 @@ export default function AIPanel({
             {copy.poweredBy}: {result.provider} · {result.model}
             {result.fallback_count > 0 ? ` · fallback ×${result.fallback_count}` : ""}
             {result.cached ? " · cached" : ""}
+            {translating ? ` · ${copy.translatingReading}` : ""}
           </p>
         </>
       )}

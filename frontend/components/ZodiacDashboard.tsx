@@ -3,7 +3,8 @@
 import { useState } from "react";
 
 import { t, SIGN_NAMES } from "@/lib/i18n";
-import type { AIReadingResult, Language, Profile, ZodiacKind } from "@/lib/types";
+import type { Language, Profile, ZodiacKind } from "@/lib/types";
+import type { TranslatableEntry } from "@/lib/useLanguageSyncedReading";
 import ActionGrid from "./ActionGrid";
 import AIPanel from "./AIPanel";
 import AskAiPanel from "./AskAiPanel";
@@ -22,7 +23,7 @@ export default function ZodiacDashboard({
   language: Language;
   consent: boolean;
   onConsentChange: (value: boolean) => void;
-  cache: Map<string, { result: AIReadingResult }>;
+  cache: Map<string, TranslatableEntry>;
 }) {
   const copy = t(language);
   const [action, setAction] = useState<Action>("my_sign");
@@ -50,7 +51,7 @@ export default function ZodiacDashboard({
 
       {action === "compatibility" ? (
         <CompatibilityPanel
-          key={`zodiac-compatibility-${language}`}
+          key="zodiac-compatibility"
           domain="zodiac"
           name={profile.name}
           birthDate={profile.birth_date}
@@ -59,10 +60,11 @@ export default function ZodiacDashboard({
           onConsentChange={onConsentChange}
           title={copy.zodiacCards.compatibility}
           description={copy.zodiacCardDesc.compatibility}
+          cache={cache}
         />
       ) : action === "ask_ai" ? (
         <AskAiPanel
-          key={`zodiac-ask_ai-${language}`}
+          key="zodiac-ask_ai"
           domain="zodiac"
           name={profile.name}
           birthDate={profile.birth_date}
@@ -71,10 +73,11 @@ export default function ZodiacDashboard({
           onConsentChange={onConsentChange}
           title={copy.zodiacCards.ask_ai}
           description={copy.zodiacCardDesc.ask_ai}
+          cache={cache}
         />
       ) : (
         <AIPanel
-          key={`zodiac:${action}:${signature}:${language}`}
+          key={`zodiac:${action}:${signature}`}
           domain="zodiac"
           kind={action}
           signature={signature}

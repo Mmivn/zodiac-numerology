@@ -63,10 +63,16 @@ from schemas import (  # noqa: E402
     NumerologyResponse,
     ProfileRequest,
     ProfileResponse,
+    TranslateRequest,
     ZODIAC_KINDS,
     ZodiacRequest,
     ZodiacResponse,
 )
+
+# English names ai_service.translate_text_detailed/AIGateway.translate expect
+# for their target-language prompt — mirrors ui/common.py's
+# _TRANSLATION_LANGUAGE_NAMES so both front ends translate identically.
+_TRANSLATION_LANGUAGE_NAMES = {"ru": "Russian", "en": "English", "vi": "Vietnamese"}
 
 DATE_REASON_TO_DETAIL = {
     "unparseable": "Could not parse the birth date. Use DD.MM.YYYY, DD/MM/YYYY, or YYYY-MM-DD.",
@@ -332,6 +338,42 @@ def ai_reading(payload: AIReadingRequest) -> AIReadingResponse:
         raise HTTPException(status_code=422, detail=f"Unknown domain '{payload.domain}'.")
 
     return _run_ai_call(instructions, message)
+
+
+# --------------------------------------------------------------------------
+# Translate — consent-gated. Turns an already-generated reading into
+# another supported language via a cheap translation pass (never the
+# full, expensive reading generation) — see schemas.TranslateRequest.
+# Used by the frontend so switching the UI language while a reading is
+# on screen updates it automatically instead of requiring another click.
+# --------------------------------------------------------------------------
+
+@app.post("/translate", response_model=AIReadingResponse)
+def translate(payload: TranslateRequest) -> AIReadingResponse:
+    _require_consent(payload.consent)
+
+    text = payload.text.strip()
+    if not text:
+        raise HTTPException(status_code=422, detail="text must not be empty.")
+
+    language_name = _TRANSLATION_LANGUAGE_NAMES[payload.language]
+    try:
+        result = ai_service.translate_text_detailed(text, language_name)
+    except ai_service.MissingAPIKeyError as error:
+        raise HTTPException(status_code=503, detail="AI service is not configured.") from error
+    except ai_service.EmptyResponseError as error:
+        raise HTTPException(status_code=502, detail="The AI returned an empty response.") from error
+    except ai_service.AIServiceError as error:
+        raise HTTPException(status_code=502, detail=f"AI request failed: {error}") from error
+
+    return AIReadingResponse(
+        text=result.text,
+        provider=result.provider,
+        model=result.model,
+        fallback_count=result.fallback_count,
+        cached=result.cached,
+        used_paid_provider=result.used_paid_provider,
+    )
 
 
 # --------------------------------------------------------------------------

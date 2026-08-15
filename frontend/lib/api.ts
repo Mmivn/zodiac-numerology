@@ -89,6 +89,25 @@ export function requestAIReading(params: {
   });
 }
 
+/**
+ * Translate a reading already generated (see requestAIReading/
+ * requestCompatibility) into another supported language — cheap
+ * compared to a fresh reading, and used only to keep an
+ * already-displayed reading in sync with the UI language. See
+ * lib/useLanguageSyncedReading.ts.
+ */
+export function requestTranslation(params: {
+  text: string;
+  language: Language;
+  consent: boolean;
+}): Promise<AIReadingResult> {
+  return post<AIReadingResult>("/translate", {
+    text: params.text,
+    language: params.language,
+    consent: params.consent,
+  });
+}
+
 export function requestCompatibility(params: {
   domain: "zodiac" | "numerology";
   personA: { name: string; birthDate: string };

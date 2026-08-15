@@ -102,6 +102,7 @@ interface Copy {
   companionName: string;
   companionBirthDate: string;
   loadingReading: string;
+  translatingReading: string;
   errorGeneric: string;
   emptyResponse: string;
   serviceUnavailable: string;
@@ -186,6 +187,7 @@ export const COPY: Record<Language, Copy> = {
     companionName: "Как зовут второго человека?",
     companionBirthDate: "Дата рождения второго человека",
     loadingReading: "AI думает...",
+    translatingReading: "переводим на новый язык...",
     errorGeneric: "Произошла ошибка при обращении к AI. Попробуй ещё раз.",
     emptyResponse: "AI вернул пустой ответ. Попробуй ещё раз.",
     serviceUnavailable: "AI-сервис временно недоступен.",
@@ -267,6 +269,7 @@ export const COPY: Record<Language, Copy> = {
     companionName: "What is the second person's name?",
     companionBirthDate: "Second person's birth date",
     loadingReading: "AI is thinking...",
+    translatingReading: "translating to the new language...",
     errorGeneric: "Something went wrong contacting the AI. Please try again.",
     emptyResponse: "The AI returned an empty response. Please try again.",
     serviceUnavailable: "The AI service is temporarily unavailable.",
@@ -348,6 +351,7 @@ export const COPY: Record<Language, Copy> = {
     companionName: "Người thứ hai tên là gì?",
     companionBirthDate: "Ngày sinh của người thứ hai",
     loadingReading: "AI đang suy nghĩ...",
+    translatingReading: "đang dịch sang ngôn ngữ mới...",
     errorGeneric: "Đã xảy ra lỗi khi gọi AI. Vui lòng thử lại.",
     emptyResponse: "AI trả về phản hồi trống. Vui lòng thử lại.",
     serviceUnavailable: "Dịch vụ AI tạm thời không khả dụng.",

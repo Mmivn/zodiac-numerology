@@ -59,6 +59,23 @@ class FakeGateway:
             attempts=["attempt"] * (self._fallback_count + 1),
         )
 
+    def translate(self, text, target_language=None, source_language=None, use_cache=True):
+        """Mirrors AIGateway.translate's surface — see POST /translate
+        (ai_service.translate_text_detailed)."""
+        self.call_count += 1
+        self.last_kwargs = {"prompt": text, "system_prompt": f"translate:{target_language}"}
+        if self._raise_error:
+            raise self._raise_error
+        return GenerateResult(
+            text=self._text,
+            provider=self._provider,
+            model=self._model,
+            latency_ms=1.0,
+            cached=self._cached,
+            used_paid_provider=self._used_paid_provider,
+            attempts=["attempt"] * (self._fallback_count + 1),
+        )
+
     def status(self):
         """Mirrors AIGateway.status()'s shape (see GET /health) — never a
         key value, deterministic regardless of ambient .env state."""

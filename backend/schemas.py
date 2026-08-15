@@ -91,6 +91,21 @@ class AIReadingResponse(BaseModel):
     used_paid_provider: bool
 
 
+class TranslateRequest(BaseModel):
+    """Translate a reading already generated (see AIReadingResponse/
+    CompatibilityResponse.text) into another supported language — used
+    when the UI language changes while a reading is on screen, so the
+    frontend can show it in the new language without re-running the
+    (paid) reading generation. Never used to translate arbitrary text
+    the AI hasn't already produced for this user."""
+
+    text: str = Field(..., min_length=1, max_length=20000)
+    language: Language = "en"
+    consent: bool = Field(
+        ..., description="Must be true — explicit user consent to send reading text to the AI."
+    )
+
+
 class PersonInput(BaseModel):
     name: str = Field(..., min_length=1, max_length=100)
     birth_date: str = Field(..., examples=["20.05.1990"])

@@ -1,6 +1,12 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { ApiError, createProfile, requestAIReading, requestCompatibility } from "@/lib/api";
+import {
+  ApiError,
+  createProfile,
+  requestAIReading,
+  requestCompatibility,
+  requestTranslation,
+} from "@/lib/api";
 
 function jsonResponse(body: unknown, status = 200) {
   return {
@@ -110,6 +116,37 @@ describe("requestAIReading", () => {
 
     expect(result.provider).toBe("groq");
     expect(result.fallback_count).toBe(1);
+  });
+});
+
+describe("requestTranslation", () => {
+  it("posts text/language/consent to /translate and returns the translated result", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      jsonResponse({
+        text: "Đã dịch.",
+        provider: "gemini",
+        model: "gemini-flash-latest",
+        fallback_count: 0,
+        cached: false,
+        used_paid_provider: false,
+      })
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await requestTranslation({
+      text: "Already translated once.",
+      language: "vi",
+      consent: true,
+    });
+
+    expect(result.text).toBe("Đã dịch.");
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(String(url)).toContain("/translate");
+    expect(JSON.parse(init.body)).toEqual({
+      text: "Already translated once.",
+      language: "vi",
+      consent: true,
+    });
   });
 });
 

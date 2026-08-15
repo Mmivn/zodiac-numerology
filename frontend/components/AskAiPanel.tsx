@@ -4,7 +4,8 @@ import { useRef, useState } from "react";
 
 import { ApiError, requestAIReading } from "@/lib/api";
 import { t } from "@/lib/i18n";
-import type { AIReadingResult, Language } from "@/lib/types";
+import { useLanguageSyncedReading, type TranslatableEntry } from "@/lib/useLanguageSyncedReading";
+import type { Language } from "@/lib/types";
 import ConsentGate from "./ConsentGate";
 import ReadingCard from "./ReadingCard";
 import ReadingSkeleton from "./ReadingSkeleton";
@@ -18,6 +19,7 @@ export default function AskAiPanel({
   onConsentChange,
   title,
   description,
+  cache,
 }: {
   domain: "zodiac" | "numerology";
   name: string;
@@ -27,21 +29,21 @@ export default function AskAiPanel({
   onConsentChange: (value: boolean) => void;
   title: string;
   description: string;
+  /** Shared with AIPanel/CompatibilityPanel — see
+   * lib/useLanguageSyncedReading.ts. Keyed on the last *submitted*
+   * question so a language switch translates the existing answer
+   * instead of losing it. */
+  cache: Map<string, TranslatableEntry>;
 }) {
-  // `result` (and `question`) are local state — this component must
-  // never keep showing a previously-fetched answer after the UI
-  // language changes. Fixed at the call site (ZodiacDashboard/
-  // NumerologyDashboard render `<AskAiPanel key={language} .../>`),
-  // which forces React to fully remount on a language switch rather
-  // than reusing this instance — the officially-recommended way to
-  // reset all state tied to a prop, versus an effect that calls
-  // setState just to derive state from a prop (an anti-pattern the
-  // linter itself flags). The one small tradeoff: an unsubmitted
-  // draft question is cleared too, in exchange for it being
-  // structurally impossible for a stale-language answer to leak through.
   const copy = t(language);
   const [question, setQuestion] = useState("");
-  const [result, setResult] = useState<AIReadingResult | null>(null);
+  // The signature of the last *submitted* question, kept separate from
+  // the live textarea value — editing a fresh draft after getting an
+  // answer must not change which cache entry a language switch resolves
+  // against (or make it look like there's a new answer to translate).
+  const [lastQuestion, setLastQuestion] = useState<string | null>(null);
+  const cacheKey = lastQuestion ? `${domain}:ask_ai:${lastQuestion}` : null;
+  const { result, translating, refresh } = useLanguageSyncedReading(cache, cacheKey, language, consent);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showConsentGate, setShowConsentGate] = useState(false);
@@ -70,7 +72,12 @@ export default function AskAiPanel({
         consent,
         question: trimmed,
       });
-      setResult(reading);
+      cache.set(`${domain}:ask_ai:${trimmed}`, {
+        sourceLanguage: language,
+        byLanguage: { [language]: reading },
+      });
+      setLastQuestion(trimmed);
+      refresh();
     } catch (err) {
       if (err instanceof ApiError) {
         if (err.status === 503) setError(copy.serviceUnavailable);
@@ -137,6 +144,7 @@ export default function AskAiPanel({
           <p className="text-xs text-muted px-1">
             {copy.poweredBy}: {result.provider} · {result.model}
             {result.fallback_count > 0 ? ` · fallback ×${result.fallback_count}` : ""}
+            {translating ? ` · ${copy.translatingReading}` : ""}
           </p>
         </>
       )}

@@ -17,7 +17,8 @@ import {
   saveLanguage,
   saveProfile,
 } from "@/lib/storage";
-import type { AIReadingResult, Language, Profile } from "@/lib/types";
+import type { Language, Profile } from "@/lib/types";
+import type { TranslatableEntry } from "@/lib/useLanguageSyncedReading";
 
 type Tab = "zodiac" | "numerology";
 
@@ -43,10 +44,13 @@ export default function Home() {
   // A stable Map identity across renders — one AI-result cache per browser
   // tab, shared across both dashboards, so switching tabs/actions never
   // re-fetches an already-generated reading for the same (domain, kind,
-  // signature, language) combination this session. useState (not
-  // useRef): the value is read during render (passed as a prop), and
-  // refs must never be read during render.
-  const [cache] = useState(() => new Map<string, { result: AIReadingResult }>());
+  // signature) combination this session. Deliberately never keyed on
+  // language: each entry holds one canonical reading plus a translation
+  // per language actually viewed (see useLanguageSyncedReading), so a
+  // language switch translates the existing reading instead of losing
+  // it. useState (not useRef): the value is read during render (passed
+  // as a prop), and refs must never be read during render.
+  const [cache] = useState(() => new Map<string, TranslatableEntry>());
 
   useEffect(() => {
     // Deliberate one-time setState-on-mount, not a "you might not need an

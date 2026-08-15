@@ -4,7 +4,8 @@ import { useEffect, useState } from "react";
 
 import { fetchNumerology } from "@/lib/api";
 import { t } from "@/lib/i18n";
-import type { AIReadingResult, Language, NumerologyKind, NumerologyNumbers, Profile } from "@/lib/types";
+import type { Language, NumerologyKind, NumerologyNumbers, Profile } from "@/lib/types";
+import type { TranslatableEntry } from "@/lib/useLanguageSyncedReading";
 import ActionGrid from "./ActionGrid";
 import AIPanel from "./AIPanel";
 import AskAiPanel from "./AskAiPanel";
@@ -23,7 +24,7 @@ export default function NumerologyDashboard({
   language: Language;
   consent: boolean;
   onConsentChange: (value: boolean) => void;
-  cache: Map<string, { result: AIReadingResult }>;
+  cache: Map<string, TranslatableEntry>;
 }) {
   const copy = t(language);
   const [action, setAction] = useState<Action>("life_path");
@@ -100,7 +101,7 @@ export default function NumerologyDashboard({
 
       {action === "compatibility" ? (
         <CompatibilityPanel
-          key={`numerology-compatibility-${language}`}
+          key="numerology-compatibility"
           domain="numerology"
           name={profile.name}
           birthDate={profile.birth_date}
@@ -109,10 +110,11 @@ export default function NumerologyDashboard({
           onConsentChange={onConsentChange}
           title={copy.numerologyCards.compatibility}
           description={copy.numerologyCardDesc.compatibility}
+          cache={cache}
         />
       ) : action === "ask_ai" ? (
         <AskAiPanel
-          key={`numerology-ask_ai-${language}`}
+          key="numerology-ask_ai"
           domain="numerology"
           name={profile.name}
           birthDate={profile.birth_date}
@@ -121,10 +123,11 @@ export default function NumerologyDashboard({
           onConsentChange={onConsentChange}
           title={copy.numerologyCards.ask_ai}
           description={copy.numerologyCardDesc.ask_ai}
+          cache={cache}
         />
       ) : (
         <AIPanel
-          key={`numerology:${action}:${signature}:${language}`}
+          key={`numerology:${action}:${signature}`}
           domain="numerology"
           kind={action}
           signature={signature}

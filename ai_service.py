@@ -115,14 +115,13 @@ def ask_ai(instructions, user_input, previous_response_id=None):
     return result.text, None
 
 
-def translate_text(text, language):
-    """Faithfully translate `text` into `language` (e.g. "Vietnamese").
-
-    Uses the gateway's free-first translation routing (see
-    AIGateway.translate), which prefers the same free providers before
-    OpenAI. This is a mechanical translation of a reading already
-    produced, not a new generation, and is deliberately stateless.
-    Returns the translated text; raises the same exceptions as ask_ai.
+def translate_text_detailed(text, language):
+    """Like translate_text, but returns ALL_API's full GenerateResult
+    (.text, .provider, .model, .fallback_count, .cached,
+    .used_paid_provider) instead of just the string — for callers that
+    need to report which provider actually answered (e.g. the backend
+    API's POST /translate, which mirrors POST /ai-reading's response
+    shape). Raises the same exceptions as translate_text.
     """
     gateway = _get_gateway()
     _logger.debug("[AI-CALL-LOG] TRANSLATE language=%s text_len=%d", language, len(text))
@@ -136,8 +135,7 @@ def translate_text(text, language):
     except Exception as error:  # network/timeout/etc.
         raise AIServiceError(str(error)) from error
 
-    translated = result.text
-    if not translated or not translated.strip():
+    if not result.text or not result.text.strip():
         raise EmptyResponseError("The AI returned an empty translation")
 
     _logger.info(
@@ -145,4 +143,16 @@ def translate_text(text, language):
         "fallback_count=%d cached=%s used_paid_provider=%s",
         result.provider, result.model, result.fallback_count, result.cached, result.used_paid_provider,
     )
-    return translated
+    return result
+
+
+def translate_text(text, language):
+    """Faithfully translate `text` into `language` (e.g. "Vietnamese").
+
+    Uses the gateway's free-first translation routing (see
+    AIGateway.translate), which prefers the same free providers before
+    OpenAI. This is a mechanical translation of a reading already
+    produced, not a new generation, and is deliberately stateless.
+    Returns the translated text; raises the same exceptions as ask_ai.
+    """
+    return translate_text_detailed(text, language).text
